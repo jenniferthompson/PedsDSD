@@ -601,4 +601,60 @@ radar.hyper$dot.radar
 @
 \end{landscape}
 
+\section{Cluster Analysis}
+
+To see if the pediatric and geriatric populations had similar clusters of symptoms when assessed for
+delirium/dementia, we performed a cluster analysis. For each population separately, we cut a
+hierarchical cluster tree, grouping symptoms by similarity. (To avoid issues of correlation within
+patients, we took only the first day from each patient.) Once we determined clusters for each
+population, we used a Cohen's kappa to assess ``agreement" between symptom clusters of the two
+populations.
+
+<<cluster_datamgmt, results = 'asis', fig.height = 5, fig.width = 8>>=
+library(ClustOfVar) ## cluster analysis
+library(psych) ## Cohen's kappa
+
+## -- For cluster analysis, want two data sets (peds, DSD) with one record per patient (only ------- ## -- first record from each), one column per symptom ----------------------------------------------
+## Remove inconsolability, delusions because they weren't assessed in both populations.
+## Remove others because every day 1 assessment in geriatric patients showed inattention and
+##  orientation issues; every day 1 assessment in pediatric patients showed fluctuation symptoms.
+##  Including these variables results in errors with hclustvar().
+common.symptoms <- del.symptoms[!(del.symptoms %in% c('inconsolability', 'delusions', 'attention',
+                                                      'orientation', 'fluctuation'))]
+
+dsd.clusterdata <- dsd.long %>%
+  arrange(id, day) %>%
+  group_by(id) %>%
+  filter(row_number() == 1) %>%
+  ungroup() %>%
+  select(one_of(common.symptoms)) %>%
+  data.frame()
+
+pscam.clusterdata <- pscam.long %>%
+  arrange(id, day) %>%
+  group_by(id) %>%
+  filter(row_number() == 1) %>%
+  ungroup() %>%
+  select(one_of(common.symptoms)) %>%
+  data.frame()
+
+## -- Cluster analysis for each population ---------------------------------------------------------
+dsd.tree <- hclustvar(X.quanti = dsd.clusterdata)
+## Columns need to be numeric; make pscam.clusterdata a numeric matrix
+pscam.tree <- hclustvar(X.quanti = as.matrix(pscam.clusterdata)*1)
+
+plot(dsd.tree, sub = 'Geriatric Patients')
+plot(pscam.tree, sub = 'Pediatric Patients')
+
+dsd.clusters <- cutreevar(dsd.tree, k = 4, matsim = TRUE)
+pscam.clusters <- cutreevar(pscam.tree, k = 4, matsim = TRUE)
+
+@
+
+<<cluster_kappa, results = 'markup'>>=
+cohen.kappa(cbind(dsd.clusters$cluster, pscam.clusters$cluster))
+
+@
+
+
 \end{document}
