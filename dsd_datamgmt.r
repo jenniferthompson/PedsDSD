@@ -44,7 +44,7 @@ dsd.oneobs <- dsd.data %>% select(id:ep.hyper, type.dem, dc.loc)
 
 ## Transpose DOM assessment data to multiple records per patient, one column per question ##
 dsd.long <- dsd.data %>%
-  select(id, contains('^dom.[^tot]'), contains('rass')) %>%
+  select(id, matches('^dom.[^tot]'), contains('rass')) %>%
     ## select DOM, RASS questions (leave out DOM totals)
   gather(dom.asmt, dom.value, -id) %>%                            ## transpose into columns
   separate(dom.asmt, into = c('dom.q', 'day'), sep = '.g\\.') %>% ## cols for DOM ?, study day
@@ -94,59 +94,5 @@ dsd.sumvars <- dsd.long %>%
 
 ## Merge with oneobs data
 dsd.oneobs <- merge(dsd.oneobs, dsd.sumvars, by = 'id')
-
-## -- Add variable labels -- ##
-label(dsd.long$id) <- 'Patient ID'
-label(dsd.long$day) <- 'Study day'
-label(dsd.long$dom.1) <- 'DOM 1: Sustained attention'
-label(dsd.long$dom.2) <- 'DOM 2: Shifting attention'
-label(dsd.long$dom.3) <- 'DOM 3: Orientation'
-label(dsd.long$dom.4) <- 'DOM 4: Consciousness'
-label(dsd.long$dom.5) <- 'DOM 5: Apathy'
-label(dsd.long$dom.6) <- 'DOM 6: Hypokinesia/psychomotor retardation'
-label(dsd.long$dom.7) <- 'DOM 7: Incoherence'
-label(dsd.long$dom.8) <- 'DOM 8: Fluctuation in functioning'
-label(dsd.long$dom.9) <- 'DOM 9: Restlessness'
-label(dsd.long$dom.10) <- 'DOM 10: Delusions'
-label(dsd.long$dom.11) <- 'DOM 11: Hallucinations'
-label(dsd.long$dom.12) <- 'DOM 12: Anxiety/fear'
-label(dsd.long$rass) <- 'RASS'
-label(dsd.long$dom.tot) <- 'Total DOM score'
-label(dsd.long$sustained.attn) <- 'Sustained attention'
-label(dsd.long$shift.attn) <- 'Shfiting attention'
-label(dsd.long$attention) <- 'Attention'
-label(dsd.long$orientation) <- 'Orientation'
-label(dsd.long$consciousness) <- 'Consciousness'
-label(dsd.long$apathy) <- 'Apathy'
-label(dsd.long$hypokinesia) <- 'Hypokinesia/lethargy'
-label(dsd.long$incoherence) <- 'Incoherence'
-label(dsd.long$fluctuation) <- 'Fluctuations in functioning'
-label(dsd.long$restlessness) <- 'Restlessness'
-label(dsd.long$delusions) <- 'Delusions'
-label(dsd.long$hallucination) <- 'Hallucinations'
-label(dsd.long$anxiety) <- 'Anxiety'
-label(dsd.long$inconsolability) <- 'Inconsolability'
-label(dsd.long$del.type) <- 'Delirium subtype'
-
-label(dsd.oneobs$id) <- 'Patient ID'
-label(dsd.oneobs$age) <- 'Age'
-label(dsd.oneobs$los) <- 'Length of stay (days)'
-label(dsd.oneobs$iqcode) <- 'IQCODE'
-label(dsd.oneobs$cdr) <- 'CDR'
-label(dsd.oneobs$bi.pre) <- 'Barthel Index, pre-admission'
-label(dsd.oneobs$bi.adm) <- 'Barthel Index, admission'
-label(dsd.oneobs$bi.dc) <- 'Barthel Index, discharge'
-label(dsd.oneobs$iadl.tot) <- 'IADL, admission'
-label(dsd.oneobs$tinetti.adm) <- 'Tinetti score, admission'
-label(dsd.oneobs$tinetti.dc) <- 'Tinetti score, discharge'
-label(dsd.oneobs$ep.hypo) <- 'Episodes of hypoactive delirium'
-label(dsd.oneobs$ep.hyper) <- 'Episodes of hyperactive delirium'
-label(dsd.oneobs$type.dem) <- 'Type of dementia'
-label(dsd.oneobs$dc.loc) <- 'Discharge setting'
-label(dsd.oneobs$dom.asmts) <- 'Number of DOM assessments'
-label(dsd.oneobs$dom.max) <- 'Maximum DOM score during study'
-label(dsd.oneobs$dom.asmts.hypo) <- 'Number of hypoactive DOM assessments'
-label(dsd.oneobs$dom.asmts.hyper) <- 'Number of hyperactive DOM assessments'
-label(dsd.oneobs$dom.asmts.rass0) <- 'Number of DOM assessments with RASS = 0'
 
 rm(list = Cs(dsd.data, dsd.sumvars, had.feat))

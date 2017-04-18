@@ -47,9 +47,177 @@ pscam.long <- merge(subset(pscam.oneobs, select = c(id, age.grp)),
                     all.x = FALSE, all.y = TRUE)
 
 pscam.long.infants <- pscam.long %>%
-  filter(id %in% subset(pscam.oneobs, !is.na(age) & age < 24)$id)
+  filter(age.grp == 'Infant (6-23m)')
 pscam.long.pre <- pscam.long %>%
-  filter(id %in% subset(pscam.oneobs, !is.na(age) & age >= 24)$id)
+  filter(age.grp == 'Preschool (24-48m)')
+
+@
+
+<<varlabels>>=
+## -- Variable labels don't play nicely with the tidyverse; set after initial data management ------
+label(pscam.oneobs$id) <- 'Patient ID'
+label(pscam.oneobs$age) <- 'Age (months)'
+label(pscam.oneobs$los) <- 'Hospital length of stay'
+label(pscam.oneobs$admit.dx.0) <- 'Admission diagnosis: ARDS'
+label(pscam.oneobs$admit.dx.1) <- 'Admission diagnosis: Airway protection'
+label(pscam.oneobs$admit.dx.2) <- 'Admission diagnosis: Altered mental status'
+label(pscam.oneobs$admit.dx.3) <- 'Admission diagnosis: Brain mass'
+label(pscam.oneobs$admit.dx.4) <- 'Admission diagnosis: Cardiogenic shock'
+label(pscam.oneobs$admit.dx.5) <- 'Admission diagnosis: Congenital heart disease'
+label(pscam.oneobs$admit.dx.6) <- 'Admission diagnosis: Electrolyte disturbance'
+label(pscam.oneobs$admit.dx.7) <- 'Admission diagnosis: Encephalities/meningitis'
+label(pscam.oneobs$admit.dx.8) <- 'Admission diagnosis: Endocrine abnormality'
+label(pscam.oneobs$admit.dx.9) <- 'Admission diagnosis: Hepatic failure'
+label(pscam.oneobs$admit.dx.10) <- 'Admission diagnosis: Hydrocephalus'
+label(pscam.oneobs$admit.dx.11) <- 'Admission diagnosis: Ingestion/poisoning'
+label(pscam.oneobs$admit.dx.12) <- 'Admission diagnosis: Intracranial hemorrhage'
+label(pscam.oneobs$admit.dx.13) <- 'Admission diagnosis: Oncologic disease'
+label(pscam.oneobs$admit.dx.14) <- 'Admission diagnosis: Pneumonia'
+label(pscam.oneobs$admit.dx.15) <- 'Admission diagnosis: Sepsis/septic shock'
+label(pscam.oneobs$admit.dx.16) <- 'Admission diagnosis: Status asthmaticus'
+label(pscam.oneobs$admit.dx.17) <- 'Admission diagnosis: Status epilepticus'
+label(pscam.oneobs$admit.dx.18) <- 'Admission diagnosis: Trauma'
+label(pscam.oneobs$admit.dx.19) <- 'Admission diagnosis: Traumatic brain injury'
+label(pscam.oneobs$admit.dx.20) <- 'Admission diagnosis: Other'
+label(pscam.oneobs$prism.score) <- 'PRISM score'
+label(pscam.oneobs$prism.cat) <- 'PRISM category'
+label(pscam.oneobs$dc.status) <- 'Status at discharge'
+label(pscam.oneobs$del.asmts) <- 'Number of assessments with delirium'
+label(pscam.oneobs$del.asmts.hypo) <- 'Number of hypoactive delirium assessments'
+label(pscam.oneobs$del.asmts.hyper) <- 'Number of hyperactive delirium assessments'
+label(pscam.oneobs$del.asmts.mixed) <- 'Number of mixed type delirium assessments'
+
+label(pscam.long$id) <- 'Patient ID'
+label(pscam.long$day) <- 'Study day'
+label(pscam.long$ref.delirium) <- 'Delirious per reference rater'
+label(pscam.long$del.type) <- 'Delirium subtype'
+label(pscam.long$focus.1) <- 'Focus, form 1'
+label(pscam.long$sustain.1) <- 'Sustain attention, form 1'
+label(pscam.long$screen.1) <- 'Extraneous stimuli, form 1'
+label(pscam.long$attention.2) <- 'Focus, form 2'
+label(pscam.long$sustained.2) <- 'Sustain attention, form 2'
+label(pscam.long$stimuli.2) <- 'Extraneous stimuli, form 2'
+label(pscam.long$shift.1) <- 'Shift attention, form 1'
+label(pscam.long$shift.2) <- 'Shift attention, form 2'
+label(pscam.long$orient.person.1) <- 'Orientation to person, form 1'
+label(pscam.long$orient.place.1) <- 'Orientation to place, form 1'
+label(pscam.long$orient.time.1) <- 'Orientation to time, form 1'
+label(pscam.long$orient.situation.1) <- 'Orientation to situation, form 1'
+label(pscam.long$consistentpref.2) <- 'Consistent preference, form 2'
+label(pscam.long$orient.person.2) <- 'Orientation to person, form 2'
+label(pscam.long$orient.place.2) <- 'Orientation to place, form 2'
+label(pscam.long$conscious.1) <- 'Consciousness, form 1'
+label(pscam.long$conscious.2) <- 'Consciousness, form 2'
+label(pscam.long$interest.1) <- 'Level of interest, form 1'
+label(pscam.long$inappropriate.1) <- 'Inappropriate affect, form 1'
+label(pscam.long$speech.latency.1) <- 'Speech: latency, form 1'
+label(pscam.long$speech.amount.1) <- 'Speech: amount, form 1'
+label(pscam.long$spontaneity.1) <- 'Spontaneity, form 1'
+label(pscam.long$interact.2) <- 'Interaction, form 2'
+label(pscam.long$socsmile.2) <- 'Social smile, form 2'
+label(pscam.long$peek.2) <- 'Object permanence, form 2'
+label(pscam.long$inappropriate.2) <- 'Inappropriate affect, form 2'
+label(pscam.long$speech.amount.2) <- 'Speech: amount, form 2'
+label(pscam.long$spontaneity.2) <- 'Spontaneity, form 2'
+label(pscam.long$speech.latency.2) <- 'Speech: latency, form 2'
+label(pscam.long$lethargy.1) <- 'Lethargy, form 1'
+label(pscam.long$lethargy.2) <- 'Lethargy, form 2'
+label(pscam.long$thought.1) <- 'Thought blocking, form 1'
+label(pscam.long$receptive.1) <- 'Receptive language, form 1'
+label(pscam.long$speech.change.2) <- 'Speech: change from baseline, form 2'
+label(pscam.long$receptive.2) <- 'Receptive language, form 2'
+label(pscam.long$mentalstate.1) <- 'Acute change in mental state, form 1'
+label(pscam.long$mentalpattern.1) <- 'Pattern of mental status, form 1'
+label(pscam.long$naps.1) <- 'Naps, form 1'
+label(pscam.long$daynight.1) <- 'Day/night reversal, form 1'
+label(pscam.long$nocturnal.1) <- 'Nocturnal disturbance, form 1'
+label(pscam.long$mentalstate.2) <- 'Acute change in mental state, form 2'
+label(pscam.long$mentalpattern.2) <- 'Pattern of mental status, form 2'
+label(pscam.long$naps.2) <- 'Naps, form 2'
+label(pscam.long$daynight.2) <- 'Day/night reversal, form 2'
+label(pscam.long$nocturnal.2) <- 'Nocturnal disturbance, form 2'
+label(pscam.long$agitated.1) <- 'Agitation, form 1'
+label(pscam.long$euphoria.1) <- 'Euphoria, form 1'
+label(pscam.long$agitated.2) <- 'Agitation, form 2'
+label(pscam.long$energy.2) <- 'Euphoria, form 2'
+label(pscam.long$auditory.1) <- 'Auditory hallucinations, form 1'
+label(pscam.long$visual.1) <- 'Visual hallucinations, form 1'
+label(pscam.long$gust.1) <- 'Gustatory hallucinations, form 1'
+label(pscam.long$hyperacusis.1) <- 'Hyperacusis, form 1'
+label(pscam.long$disturbance.1) <- 'Perception of size/shape, form 1'
+label(pscam.long$hallucinations.2) <- 'Hallucinations, form 2'
+label(pscam.long$atypresp.2) <- 'Atypical response, form 2'
+label(pscam.long$hyperacusis.2) <- 'Hyperacusis, form 2'
+label(pscam.long$soothe.2) <- 'Unable to soothe, form 2'
+label(pscam.long$anxiety.1) <- 'Irritability, form 1'
+label(pscam.long$anxiety.2) <- 'Irritability, form 2'
+label(pscam.long$sustained.attn) <- 'Sustained attention'
+label(pscam.long$shift.attn) <- 'Shfiting attention'
+label(pscam.long$attention) <- 'Attention'
+label(pscam.long$orientation) <- 'Orientation'
+label(pscam.long$consciousness) <- 'Consciousness'
+label(pscam.long$apathy) <- 'Apathy'
+label(pscam.long$hypokinesia) <- 'Hypokinesia/lethargy'
+label(pscam.long$incoherence) <- 'Incoherence'
+label(pscam.long$fluctuation) <- 'Fluctuations in functioning'
+label(pscam.long$restlessness) <- 'Restlessness'
+label(pscam.long$delusions) <- 'Delusions'
+label(pscam.long$hallucination) <- 'Hallucinations'
+label(pscam.long$anxiety) <- 'Anxiety'
+label(pscam.long$inconsolability) <- 'Inconsolability'
+
+label(dsd.long$id) <- 'Patient ID'
+label(dsd.long$day) <- 'Study day'
+label(dsd.long$dom.1) <- 'DOM 1: Sustained attention'
+label(dsd.long$dom.2) <- 'DOM 2: Shifting attention'
+label(dsd.long$dom.3) <- 'DOM 3: Orientation'
+label(dsd.long$dom.4) <- 'DOM 4: Consciousness'
+label(dsd.long$dom.5) <- 'DOM 5: Apathy'
+label(dsd.long$dom.6) <- 'DOM 6: Hypokinesia/psychomotor retardation'
+label(dsd.long$dom.7) <- 'DOM 7: Incoherence'
+label(dsd.long$dom.8) <- 'DOM 8: Fluctuation in functioning'
+label(dsd.long$dom.9) <- 'DOM 9: Restlessness'
+label(dsd.long$dom.10) <- 'DOM 10: Delusions'
+label(dsd.long$dom.11) <- 'DOM 11: Hallucinations'
+label(dsd.long$dom.12) <- 'DOM 12: Anxiety/fear'
+label(dsd.long$rass) <- 'RASS'
+label(dsd.long$dom.tot) <- 'Total DOM score'
+label(dsd.long$sustained.attn) <- 'Sustained attention'
+label(dsd.long$shift.attn) <- 'Shfiting attention'
+label(dsd.long$attention) <- 'Attention'
+label(dsd.long$orientation) <- 'Orientation'
+label(dsd.long$consciousness) <- 'Consciousness'
+label(dsd.long$apathy) <- 'Apathy'
+label(dsd.long$hypokinesia) <- 'Hypokinesia/lethargy'
+label(dsd.long$incoherence) <- 'Incoherence'
+label(dsd.long$fluctuation) <- 'Fluctuations in functioning'
+label(dsd.long$restlessness) <- 'Restlessness'
+label(dsd.long$delusions) <- 'Delusions'
+label(dsd.long$hallucination) <- 'Hallucinations'
+label(dsd.long$anxiety) <- 'Anxiety'
+label(dsd.long$inconsolability) <- 'Inconsolability'
+label(dsd.long$del.type) <- 'Delirium subtype'
+
+label(dsd.oneobs$id) <- 'Patient ID'
+label(dsd.oneobs$age) <- 'Age'
+label(dsd.oneobs$los) <- 'Length of stay (days)'
+label(dsd.oneobs$iqcode) <- 'IQCODE'
+label(dsd.oneobs$cdr) <- 'CDR'
+label(dsd.oneobs$bi.pre) <- 'Barthel Index, pre-admission'
+label(dsd.oneobs$bi.adm) <- 'Barthel Index, admission'
+label(dsd.oneobs$bi.dc) <- 'Barthel Index, discharge'
+label(dsd.oneobs$iadl.tot) <- 'IADL, admission'
+label(dsd.oneobs$tinetti.adm) <- 'Tinetti score, admission'
+label(dsd.oneobs$tinetti.dc) <- 'Tinetti score, discharge'
+label(dsd.oneobs$ep.hypo) <- 'Episodes of hypoactive delirium'
+label(dsd.oneobs$ep.hyper) <- 'Episodes of hyperactive delirium'
+label(dsd.oneobs$type.dem) <- 'Type of dementia'
+label(dsd.oneobs$dc.loc) <- 'Discharge setting'
+label(dsd.oneobs$dom.asmts) <- 'Number of DOM assessments'
+label(dsd.oneobs$dom.max) <- 'Maximum DOM score during study'
+label(dsd.oneobs$dom.asmts.hypo) <- 'Number of hypoactive DOM assessments'
+label(dsd.oneobs$dom.asmts.hyper) <- 'Number of hyperactive DOM assessments'
+label(dsd.oneobs$dom.asmts.rass0) <- 'Number of DOM assessments with RASS = 0'
 
 @
 
@@ -115,7 +283,7 @@ latex(gerdesc.table, file = '',
       what = '%',
       npct = 'both',
       npct.size = 'footnotesize',
-      colheads = 'All Patients')
+      colheads = c('N', 'All Patients'))
 @
 
 <<createmaintable>>=
@@ -241,7 +409,7 @@ create.radar <- function(symptom.data.list, ylabel){
              colour = 'grey60', size = 3.5, vjust = 0) +
     geom_point(size = 3, alpha = 0.7) +
     coord_polar(theta = 'x', start = (9*pi / 12)) +
-    theme(axis.line.x = element_line(colour = 'red'),
+    theme(axis.line.x = element_line(colour = 'white'),
           axis.text.x = element_text(face = 'bold', size = 9),
           axis.text.y = element_blank(),
           axis.ticks.y = element_blank(),
@@ -284,7 +452,7 @@ latex(symptom.table, file = '',
 @
 
 \begin{landscape}
-<<symptomsallfig, fig.cap='Dot Chart, Delirium Symptoms among All Assessments by Population', fig.height=9, fig.width=11>>=
+<<symptomsallfig, fig.cap='Dot Chart, Delirium Symptoms among All Assessments by Population', fig.height=8, fig.width=11>>=
 # radar.all$dot.plot
 # radar.all$radar.plot
 radar.all$dot.radar
@@ -407,7 +575,7 @@ latex(symptom.table.hypo, file = '',
 @
 
 \begin{landscape}
-<<symptomshypofig, results='asis', fig.cap='Dot Chart, Delirium Symptoms among Hypoactively Delirious Assessments by Population', fig.height=9, fig.width=11>>=
+<<symptomshypofig, results='asis', fig.cap='Dot Chart, Delirium Symptoms among Hypoactively Delirious Assessments by Population', fig.height=8, fig.width=11>>=
 radar.hypo$dot.radar
 @
 \end{landscape}
@@ -428,7 +596,7 @@ latex(symptom.table.hyper, file = '',
 @
 
 \begin{landscape}
-<<symptomshyperfig, results='asis', fig.cap='Dot Chart, Delirium Symptoms among Hyperactively Delirious Assessments by Population', fig.height=9, fig.width=11>>=
+<<symptomshyperfig, results='asis', fig.cap='Dot Chart, Delirium Symptoms among Hyperactively Delirious Assessments by Population', fig.height=8, fig.width=11>>=
 radar.hyper$dot.radar
 @
 \end{landscape}
