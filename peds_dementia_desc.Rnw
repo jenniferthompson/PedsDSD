@@ -652,6 +652,11 @@ pscam.clusters <- cutreevar(pscam.tree, k = 4, matsim = TRUE)
 @
 
 <<cluster_kappa, results = 'markup'>>=
+cluster.matrix <- cbind(dsd.clusters$cluster, pscam.clusters$cluster)
+rownames(cluster.matrix) <- common.symptoms
+colnames(cluster.matrix) <- c('Geriatric', 'Pediatric')
+cluster.matrix
+
 cohen.kappa(cbind(dsd.clusters$cluster, pscam.clusters$cluster))
 
 @
