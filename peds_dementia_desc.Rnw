@@ -1,0 +1,436 @@
+%% -- Specially formatted Latex comment tells RStudio to compile PDF with knitr
+% !Rnw weave = knitr
+
+\documentclass{article}
+
+\usepackage{setspace, relsize} %for latex(describe()), \code
+\usepackage{moreverb}          %for verbatimtabinput
+\usepackage[pdftex]{lscape}    %allows tables to be landscape
+\usepackage{longtable}         %allows tables to break across pages
+\usepackage{url}               %puts URL in different text
+%\usepackage[margin=.5in, landscape]{geometry} %resets margins
+\usepackage[margin=.5in]{geometry}
+\usepackage{hyperref}
+\usepackage{pdfpages}
+
+% New command to make R code stand out
+\newcommand{\co}[1]{\texttt{\smaller #1}}
+
+\title{Pediatric Delirium vs Delirium Superimposed on Dementia}
+\author{Biostatistician: Jennifer Thompson; Supervisor: Rameela Chandrasekhar}
+\date{\today}
+
+\begin{document}
+\maketitle
+\noindent\hrulefill
+\tableofcontents
+\noindent\hrulefill
+
+<<setup, include=FALSE, results='hide', cache=FALSE>>=
+opts_chunk$set(echo=FALSE, warning = FALSE, message = FALSE, cache = FALSE, error = FALSE, results='hide', fig.align='center', fig.pos='!h')
+options(replace.assign = TRUE, width = 90)
+
+library(rms)
+library(ggplot2)
+
+source('dsd_datamgmt.r')
+source('pscam_dsd_datamgmt.r')
+
+## Create two pediatric data sets, for infants (6m-23m) and preschoolers (2-4 years) ##
+pscam.oneobs <- pscam.oneobs %>%
+  mutate(age.grp = factor(ifelse(is.na(age), NA, ifelse(age < 24, 0, 1)),
+                          levels = 0:1, labels = c('Infant (6-23m)', 'Preschool (24-48m)')))
+
+pscam.long <- merge(subset(pscam.oneobs, select = c(id, age.grp)),
+                    pscam.long,
+                    by = 'id',
+                    all.x = FALSE, all.y = TRUE)
+
+pscam.long.infants <- pscam.long %>%
+  filter(id %in% subset(pscam.oneobs, !is.na(age) & age < 24)$id)
+pscam.long.pre <- pscam.long %>%
+  filter(id %in% subset(pscam.oneobs, !is.na(age) & age >= 24)$id)
+
+@
+
+We compared the prevalence of delirium symptoms among delirious pediatric patients (divided into
+infants and preschoolers) and geriatric patients with delirium superimposed on dementia (DSD).
+
+\section{Cohort Descriptions}
+\subsection{Pediatric Patients}
+We included patients enrolled in the PsCAM validation study who had at least one instance of
+confirmed delirium as assessed by the psychiatric reference rater. Table \ref{table:pedsdesc}
+describes baseline and in-hospital characteristics for these patients.
+
+<<pedsdesc>>=
+pedsdesc.left <- paste(c('age', paste0('admit.dx.', 0:20, collapse = ' + '), 'prism.score',
+                         'prism.cat', 'del.asmts', 'del.asmts.hypo', 'del.asmts.hyper',
+                         'del.asmts.mixed', 'los', 'dc.status'),
+                       collapse = ' + ')
+
+pedsdesc.table <- summaryM(as.formula(paste(pedsdesc.left, ' ~ age.grp')),
+                           overall = TRUE,
+                           data = pscam.oneobs)
+@
+
+<<printpedsdesc, results='asis'>>=
+latex(pedsdesc.table, file = '',
+      label = 'table:pedsdesc',
+      caption = 'Baseline and In-Hospital Characteristics of Pediatric Patients',
+      where = '!h',
+      size = 'small',
+      prmsd = TRUE,
+      digits = 2,
+      what = '%',
+      npct = 'both',
+      npct.size = 'footnotesize')
+@
+
+\clearpage
+\subsection{Geriatric Patients}
+We included geriatric patients with dementia and at least one delirium assessment. Table
+\ref{table:gerdesc} describes baseline and in-hospital characteristics for these patients.
+
+<<gerdesc>>=
+# gerdesc.left <- paste(c('age', paste0('admit.dx.', 0:20, collapse = ' + '), 'prism.score',
+#                         'prism.cat', 'del.asmts', 'dom.asmts.hypo', 'dom.asmts.hyper',
+#                         'dom.asmts.rass0', 'los', 'dc.status'),
+#                        collapse = ' + ')
+
+gerdesc.table <- summaryM(age + iqcode + cdr + iadl.tot + bi.pre + bi.adm + bi.dc + tinetti.adm +
+                            tinetti.dc + type.dem + dom.asmts + dom.asmts.hypo + dom.asmts.hyper +
+                            dom.asmts.rass0 + dc.loc ~ 1,
+                           data = dsd.oneobs)
+@
+
+<<printgerdesc, results='asis'>>=
+latex(gerdesc.table, file = '',
+      label = 'table:gerdesc',
+      caption = 'Baseline and In-Hospital Characteristics of DSD Patients',
+      where = '!h',
+#       exclude1 = FALSE,
+      long = TRUE,
+      prmsd = TRUE,
+      digits = 2,
+      what = '%',
+      npct = 'both',
+      npct.size = 'footnotesize',
+      colheads = 'All Patients')
+@
+
+<<createmaintable>>=
+del.symptoms <- Cs(attention, orientation, consciousness, apathy, hypokinesia, incoherence,
+                   fluctuation, restlessness, delusions, hallucination, anxiety, inconsolability)
+
+calc.pct <- function(varname, dataset){
+  ## Get number of all delirium assessments, number of assessments with feature assessed
+  n.asmts.all <- nrow(dataset)
+  n.asmts.nonmiss <- sum(!is.na(dataset[,varname]))
+  
+  ## Number of assessments with abnormal feature
+  n.abnormal <- ifelse(n.asmts.nonmiss == 0, NA, sum(dataset[,varname], na.rm = TRUE))
+  
+  ## Calculate percentages
+  pct.abnormal.all <- round((n.abnormal / n.asmts.all)*100)
+  pct.abnormal.nonmiss <- round((n.abnormal / n.asmts.nonmiss)*100)
+  
+  if(is.na(n.abnormal)){
+    pct.string <- '\\emph{(Not applicable)}'
+  } else if(n.asmts.all == n.asmts.nonmiss){
+    pct.string <- paste0(n.abnormal, ' (', pct.abnormal.all, '\\%)')
+  } else{
+    pct.string <- paste0(n.abnormal, ' (', pct.abnormal.all, '\\%; ', pct.abnormal.nonmiss, '\\%)')
+  }
+  
+  return(list('n.abnormal' = n.abnormal,
+              'pct.abnormal.all' = pct.abnormal.all,
+              'pct.abnormal.nonmiss' = pct.abnormal.nonmiss,
+              'pct.string' = pct.string))
+}
+
+## -- Get list of all relevant data for all symptoms -- ##
+all.data <- Cs(dsd.long, pscam.long.infants, pscam.long.pre)
+all.legend <- c('DSD', 'Infants (6-23m)', 'Preschoolers (24-48m)')
+
+symptom.data.all <- lapply(all.data,
+                           FUN = function(data){
+                             lapply(del.symptoms, FUN = function(x){
+                               calc.pct(varname = x, dataset = get(data))
+                             })
+                           })
+
+## -- Create table for printing -- ##
+symptom.table <- do.call(cbind,
+                         lapply(symptom.data.all,
+                                FUN = function(x){
+                                  do.call(rbind,
+                                          lapply(x, FUN = function(y){ y$pct.string }))
+                                }))
+
+colnames(symptom.table) <- c('DSD', 'Infants (6-23 months)', 'Preschoolers (24-48 months)')
+rownames(symptom.table) <- capitalize(del.symptoms)
+
+## Data for radar plot ##
+create.radar <- function(symptom.data.list, ylabel){
+  radar.data <- 
+    do.call(rbind,
+            lapply(1:length(symptom.data.list),
+                   FUN = function(data){
+                     do.call(rbind,
+                             lapply(1:length(del.symptoms),
+                                    FUN = function(sympnum){
+                                      data.frame(symptom = capitalize(del.symptoms[sympnum]),
+                                                 pop = all.legend[data],
+                                                 pct = symptom.data.list[[data]][[sympnum]]$pct.abnormal.nonmiss)
+                                      }))
+                     }))
+
+  ## Sort by percent of DSD patients
+  dsd.data <- subset(radar.data, pop == 'DSD')
+  dsd.data <- dsd.data[order(dsd.data$pct, na.last = FALSE, decreasing = FALSE),]
+  dsd.data$sortvar <- 1:nrow(dsd.data)
+  radar.data <- merge(radar.data, subset(dsd.data, select = c(symptom, sortvar)), by = 'symptom')
+  radar.data <- radar.data[order(radar.data$sortvar),]
+  radar.data$symptom.f <- factor(radar.data$symptom, levels=unique(as.character(radar.data$symptom)))
+#   radar.data$symptom <- ifelse(radar.data$symptom %in% c('Fluctuation', 'Restlessness'),
+#                                paste0('\n', as.character(radar.data$symptom)),
+#                                as.character(radar.data$symptom))
+  radar.data$xval <- 1
+  
+  dot.plot <-
+  ggplot(aes(x = symptom.f, y = pct, colour = pop), data = radar.data) +
+    geom_vline(xintercept = 1:length(del.symptoms), colour = 'grey70', alpha = 0.7, size = 15) +
+    geom_vline(xintercept = c(#(1:length(del.symptoms) - 0.15),
+                              1:length(del.symptoms)),
+                              #(1:length(del.symptoms) + 0.15)),
+               colour = 'white', size = 0.25) +
+    geom_hline(yintercept = seq(25, 100, 25), colour = 'white', size = 0.5) +
+    geom_point(size = 3, alpha = 0.7) + #, position = position_dodge(width = 0.5)) +
+#     coord_flip() +
+    scale_colour_discrete(name = '') +
+#     scale_size(name = '', range = c(2.5, 4), guide = FALSE) +
+    scale_x_discrete(name = '') +
+    scale_y_continuous(name = ylabel) +
+    theme(#panel.grid.major.x = element_line(size = 15, colour = 'grey80', alpha = 0.5),
+          #panel.grid.major.y = element_line(colour = 'white'),
+          #panel.grid.minor.y = element_line(colour = 'white'),
+          panel.background = element_rect(fill = 'white'),
+          axis.title.x = element_text(vjust = 0, size = 10),
+          axis.text.x = element_text(angle = 60, vjust = 1, hjust = 1),
+          axis.text.y = element_text(hjust = 1.75),
+          axis.ticks.x = element_blank(),
+          axis.ticks.y = element_blank(),
+          legend.position = 'bottom')
+
+  radar.plot <- ggplot(aes(x = symptom.f, y = pct, group = pop, colour = pop), data = radar.data) +
+    geom_line() +
+    coord_polar(theta = 'x', start = (pi / 12)) +
+    theme(axis.text.x = element_text(face = 'bold', vjust = 1),
+          legend.position = 'bottom') +
+    scale_colour_discrete(name = '') +
+    scale_y_continuous(name = ylabel) +
+    scale_x_discrete(name = '')
+
+  axis.label.data <- data.frame(axis.labs = seq(0, 100, 25))
+  axis.label.data$xval <- 1.5
+  
+  dot.radar <- ggplot(aes(x = symptom.f, y = pct, group = pop, colour = pop), data = radar.data) +
+    geom_hline(yintercept = seq(0, 100, 25), colour = 'white') +
+    geom_vline(xintercept = 1:length(del.symptoms), colour = 'white') +
+    annotate('text', label = seq(0, 100, 25), x = rep(7.5, 5), y = seq(0, 100, 25),
+             colour = 'grey60', size = 3.5, vjust = 0) +
+    geom_point(size = 3, alpha = 0.7) +
+    coord_polar(theta = 'x', start = (9*pi / 12)) +
+    theme(axis.line.x = element_line(colour = 'red'),
+          axis.text.x = element_text(face = 'bold', size = 9),
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          panel.grid = element_blank(),
+          #panel.grid.major.y = element_blank(),
+          legend.position = 'bottom') +
+    scale_colour_discrete(name = '') +
+    scale_size(name = '', range = c(2, 5), guide = FALSE) +
+    scale_y_continuous(name = ylabel, limits = c(-5, 100), breaks = seq(0, 100, 25)) +
+    scale_x_discrete(name = '') #, labels = unique(radar.data$symptom))
+
+  return(list('radar.data' = radar.data,
+              'dot.plot' = dot.plot,
+              'radar.plot' = radar.plot,
+              'dot.radar' = dot.radar))
+}
+
+radar.all <- create.radar(symptom.data.all,
+                          ylabel = 'Percent of Delirious Assessments where Symptom Assessed and Present')
+@
+
+\clearpage
+\section{Delirium Symptoms, All Assessments}
+We examined the prevalence of \Sexpr{length(del.symptoms)} specific symptoms of delirium in both DSD
+and pediatric delirium, separately for infants and preschoolers. Table \ref{table:symptomsall} shows
+the prevalence for each symptom in each population, as ``number of assessments with this symptom
+(percentage of all delirious assessments; percentage of all delirious assessments where this symptom
+was evaluated)." Two percentages are sometimes required because not all symptoms were able to be
+evaluated at all assessments, especially in the pediatric population.
+
+<<printsymptomsall, results='asis'>>=
+latex(symptom.table, file = '',
+      caption = 'Delirium Symptoms among All Delirious Assessments',
+      insert.bottom = 'Cells include number of assessments (percent of all delirious assessments; percent of assessments with this symptom assessed). Where only one percentage is shown, all assessments had symptom assessed.',
+      label = 'table:symptomsall',
+      title = '',
+      extracolheads = paste('N =', c(nrow(dsd.long), nrow(pscam.long.infants), nrow(pscam.long.pre))),
+      col.just = rep('r', ncol(symptom.table)),
+      where = '!h')
+@
+
+\begin{landscape}
+<<symptomsallfig, fig.cap='Dot Chart, Delirium Symptoms among All Assessments by Population', fig.height=9, fig.width=11>>=
+# radar.all$dot.plot
+# radar.all$radar.plot
+radar.all$dot.radar
+@
+\end{landscape}
+
+% \clearpage
+\section{Delirium Symptoms by Delirium Subtype}
+We examined the prevalence of each delirium symptom separately for hypoactive and hyperactive
+delirium. These delirium subtypes were indicated by the reference raters in the pediatric assessments,
+and determined via the RASS in the DSD assessments (RASS $<$ 0 = hypoactive; RASS $>$ 0 = hyperactive).
+Tables \ref{table:pedssubtypes} and \ref{table:gersubtypes} describe the prevalence of each subtype
+in both populations.
+
+<<descsubtypes>>=
+ped.subtypes <- summaryM(del.type ~ age.grp, overall = TRUE, data = pscam.long)
+ger.subtypes <- summaryM(del.type ~ 1, data = dsd.long)
+@
+
+<<printdescsubtypes, results='asis'>>=
+latex(ped.subtypes, file = '',
+      caption = 'Delirium Subtypes, Pediatric Patients',
+      where = '!h',
+      label = 'table:pedssubtypes',
+      exclude1 = FALSE,
+      what = '%',
+      npct = 'both',
+      npct.size = 'footnotesize',
+      long = TRUE)
+
+latex(ger.subtypes, file = '',
+      caption = 'Delirium Subtypes, Geriatric Patients',
+      where = '!h',
+      label = 'table:gersubtypes',
+      colheads = 'All Assessments',
+      exclude1 = FALSE,
+      what = '%',
+      npct = 'both',
+      npct.size = 'footnotesize',
+      long = TRUE)
+@
+
+\clearpage
+Tables \ref{table:symptomshypo} and \ref{table:symptomshyper} present the prevalence of delirium
+symptoms among hypoactive and hyperactive delirium assessments, respectively.
+
+<<subtypesymptoms>>=
+## Create subsets of data sets to use in lapply() ##
+dsd.long.hypo <- subset(dsd.long, del.type == 'Hypoactive')
+dsd.long.hyper <- subset(dsd.long, del.type == 'Hyperactive')
+pscam.long.infants.hypo <- subset(pscam.long.infants, del.type == 'Hypoactive')
+pscam.long.infants.hyper <- subset(pscam.long.infants, del.type == 'Hyperactive')
+pscam.long.pre.hypo <- subset(pscam.long.pre, del.type == 'Hypoactive')
+pscam.long.pre.hyper <- subset(pscam.long.pre, del.type == 'Hyperactive')
+
+## Create hypoactive table ##
+hypo.data <- Cs(dsd.long.hypo, pscam.long.infants.hypo, pscam.long.pre.hypo)
+
+symptom.data.hypo <- lapply(hypo.data,
+                            FUN = function(data){
+                              lapply(del.symptoms, FUN = function(x){
+                                calc.pct(varname = x, dataset = get(data))
+                                })
+                              })
+
+## -- Create table for printing -- ##
+symptom.table.hypo <- do.call(cbind,
+                              lapply(symptom.data.hypo,
+                                     FUN = function(x){
+                                       do.call(rbind,
+                                               lapply(x, FUN = function(y){ y$pct.string }))
+                                       }))
+
+colnames(symptom.table.hypo) <- c('DSD', 'Infants (6-23 months)', 'Preschoolers (24-48 months)')
+rownames(symptom.table.hypo) <- capitalize(del.symptoms)
+
+radar.hypo <-
+  create.radar(symptom.data.hypo,
+               ylabel = 'Percent of Hypoactively Delirious Assessments where Symptom Assessed and Present')
+
+## Create hyperactive table ##
+hyper.data <- Cs(dsd.long.hyper, pscam.long.infants.hyper, pscam.long.pre.hyper)
+
+symptom.data.hyper <- lapply(hyper.data,
+                             FUN = function(data){
+                               lapply(del.symptoms, FUN = function(x){
+                                 calc.pct(varname = x, dataset = get(data))
+                                 })
+                               })
+
+## -- Create table for printing -- ##
+symptom.table.hyper <- do.call(cbind,
+                               lapply(symptom.data.hyper,
+                                      FUN = function(x){
+                                        do.call(rbind,
+                                                lapply(x, FUN = function(y){ y$pct.string }))
+                                        }))
+
+colnames(symptom.table.hyper) <- c('DSD', 'Infants (6-23 months)', 'Preschoolers (24-48 months)')
+rownames(symptom.table.hyper) <- capitalize(del.symptoms)
+
+radar.hyper <-
+  create.radar(symptom.data.hyper,
+               ylabel = 'Percent of Hyperactively Delirious Assessments where Symptom Assessed and Present')
+
+@
+
+<<printsymptomshypo, results='asis'>>=
+latex(symptom.table.hypo, file = '',
+      caption = 'Delirium Symptoms among Hypoactive Delirious Assessments',
+      insert.bottom = 'Cells include number of assessments (percent of all hypoactive assessments; percent of hypoactive assessments with this symptom assessed). Where only one percentage is shown, all hypoactive assessments had symptom assessed.',
+      label = 'table:symptomshypo',
+      title = '',
+      extracolheads = paste('N =',
+                            c(nrow(dsd.long.hypo),
+                              nrow(pscam.long.infants.hypo),
+                              nrow(pscam.long.pre.hypo))),
+      col.just = rep('r', ncol(symptom.table.hypo)),
+      where = '!h')
+@
+
+\begin{landscape}
+<<symptomshypofig, results='asis', fig.cap='Dot Chart, Delirium Symptoms among Hypoactively Delirious Assessments by Population', fig.height=9, fig.width=11>>=
+radar.hypo$dot.radar
+@
+\end{landscape}
+
+% \clearpage
+<<printsymptomshyper, results='asis'>>=
+latex(symptom.table.hyper, file = '',
+      caption = 'Delirium Symptoms among Hyperactive Delirious Assessments',
+      insert.bottom = 'Cells include number of assessments (percent of all hyperactive assessments; percent of hyperactive assessments with this symptom assessed). Where only one percentage is shown, all hyperactive assessments had symptom assessed.',
+      label = 'table:symptomshyper',
+      title = '',
+      extracolheads = paste('N =',
+                            c(nrow(dsd.long.hyper),
+                              nrow(pscam.long.infants.hyper),
+                              nrow(pscam.long.pre.hyper))),
+      col.just = rep('r', ncol(symptom.table.hyper)),
+      where = '!h')
+@
+
+\begin{landscape}
+<<symptomshyperfig, results='asis', fig.cap='Dot Chart, Delirium Symptoms among Hyperactively Delirious Assessments by Population', fig.height=9, fig.width=11>>=
+radar.hyper$dot.radar
+@
+\end{landscape}
+
+\end{document}
