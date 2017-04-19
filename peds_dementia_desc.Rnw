@@ -603,18 +603,21 @@ radar.hyper$dot.radar
 
 \section{Cluster Analysis}
 
-To see if the pediatric and geriatric populations had similar clusters of symptoms when assessed for
+To see if pediatric and geriatric populations had similar clusters of symptoms when assessed for
 delirium/dementia, we performed a cluster analysis - a formal way of seeing if particular sets of
 symptoms are likely to be observed together, and in our case, if these sets were similar in the
-pediatric vs the geriatric populations. For each population separately, we cut a hierarchical
-cluster tree; to avoid issues of correlation within patients, we took only the first day from each
-patient. Once we determined clusters for each population, we used a Cohen's kappa to assess
-``agreement" between symptom clusters of the two populations.
+pediatric vs the geriatric populations. For each population, we cut a hierarchical cluster tree; to
+avoid issues of correlation within patients, we took only the first day from each patient. Once we
+determined clusters for each population, we used Cohen's kappa to assess ``agreement" between
+clustering of the two populations.
 
 Unfortunately, we had to exclude several symptoms from these analyses: inconsolability and delusions
 were excluded because they were not measured in both geriatric and pediatric patients; attention, orientation, and fluctuation were excluded because there was no variability in one or both populations when restricted to the first observation per patient (i.e., all geriatric patient-days recorded
 attention - there was no day without that symptom observed). Cluster analyses are performed on the
 remaining seven symptoms.
+
+Technical details: Dendrograms are produced using the \texttt{ClustOfVar} package; additional
+cluster analyses are produced using the \texttt{ClustVarLV} package.
 
 <<cluster_datamgmt>>=
 library(ClustOfVar) ## cluster trees
@@ -750,5 +753,14 @@ latex(clusters.data, file = '',
 Unfortunately, we saw very low agreement between the two populations in terms of where symptoms
 clustered: only consciousness was in the same cluster in both populations, and when we performed a
 Cohen's kappa on the above, the result is only \Sexpr{round(symptom.k$kappa, 2)} (95\% CI, [\Sexpr{round(symptom.k$confid[1, 'lower'], 2)}, \Sexpr{round(symptom.k$confid[1, 'upper'], 2)}]).
+
+\clearpage
+\section{Software Details}
+\Sexpr{devtools::session_info()$platform$version} was used for all analyses. The following table shows all add-on packages loaded.
+
+<<technical, results = 'asis'>>=
+latex(devtools::session_info()$packages, file = '',
+      rowname = NULL, label = 'table:software', size = 'footnotesize', where = '!h')
+@
 
 \end{document}
