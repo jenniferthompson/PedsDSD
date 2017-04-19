@@ -31,7 +31,7 @@ opts_chunk$set(echo=FALSE, warning = FALSE, message = FALSE, cache = FALSE, erro
 options(replace.assign = TRUE, width = 90)
 
 library(rms)
-library(ggplot2)
+library(tidyverse)
 
 source('dsd_datamgmt.r')
 source('pscam_dsd_datamgmt.r')
@@ -604,14 +604,22 @@ radar.hyper$dot.radar
 \section{Cluster Analysis}
 
 To see if the pediatric and geriatric populations had similar clusters of symptoms when assessed for
-delirium/dementia, we performed a cluster analysis. For each population separately, we cut a
-hierarchical cluster tree, grouping symptoms by similarity. (To avoid issues of correlation within
-patients, we took only the first day from each patient.) Once we determined clusters for each
-population, we used a Cohen's kappa to assess ``agreement" between symptom clusters of the two
-populations.
+delirium/dementia, we performed a cluster analysis - a formal way of seeing if particular sets of
+symptoms are likely to be observed together, and in our case, if these sets were similar in the
+pediatric vs the geriatric populations. For each population separately, we cut a hierarchical
+cluster tree; to avoid issues of correlation within patients, we took only the first day from each
+patient. Once we determined clusters for each population, we used a Cohen's kappa to assess
+``agreement" between symptom clusters of the two populations.
 
-<<cluster_datamgmt, results = 'asis', fig.height = 5, fig.width = 8>>=
-library(ClustOfVar) ## cluster analysis
+Unfortunately, we had to exclude several symptoms from these analyses: inconsolability and delusions
+were excluded because they were not measured in both geriatric and pediatric patients; attention, orientation, and fluctuation were excluded because there was no variability in one or both populations when restricted to the first observation per patient (i.e., all geriatric patient-days recorded
+attention - there was no day without that symptom observed). Cluster analyses are performed on the
+remaining seven symptoms.
+
+<<cluster_datamgmt>>=
+library(ClustOfVar) ## cluster trees
+library(ClustVarLV) ## cluster analysis
+# library(ggraph)
 library(psych) ## Cohen's kappa
 
 ## -- For cluster analysis, want two data sets (peds, DSD) with one record per patient (only ------- ## -- first record from each), one column per symptom ----------------------------------------------
@@ -622,12 +630,23 @@ library(psych) ## Cohen's kappa
 common.symptoms <- del.symptoms[!(del.symptoms %in% c('inconsolability', 'delusions', 'attention',
                                                       'orientation', 'fluctuation'))]
 
+make.factor <- function(x){
+  factor(as.numeric(x), levels = 0:1, labels = c('No', 'Yes'))
+}
+
 dsd.clusterdata <- dsd.long %>%
   arrange(id, day) %>%
   group_by(id) %>%
   filter(row_number() == 1) %>%
   ungroup() %>%
   select(one_of(common.symptoms)) %>%
+  mutate(consciousness = make.factor(consciousness),
+         apathy = make.factor(apathy),
+         hypokinesia = make.factor(hypokinesia),
+         incoherence = make.factor(incoherence),
+         restlessness = make.factor(restlessness),
+         hallucination = make.factor(hallucination),
+         anxiety = make.factor(anxiety)) %>%
   data.frame()
 
 pscam.clusterdata <- pscam.long %>%
@@ -636,30 +655,100 @@ pscam.clusterdata <- pscam.long %>%
   filter(row_number() == 1) %>%
   ungroup() %>%
   select(one_of(common.symptoms)) %>%
+  mutate(consciousness = make.factor(consciousness),
+         apathy = make.factor(apathy),
+         hypokinesia = make.factor(hypokinesia),
+         incoherence = make.factor(incoherence),
+         restlessness = make.factor(restlessness),
+         hallucination = make.factor(hallucination),
+         anxiety = make.factor(anxiety)) %>%
   data.frame()
 
 ## -- Cluster analysis for each population ---------------------------------------------------------
-dsd.tree <- hclustvar(X.quanti = dsd.clusterdata)
-## Columns need to be numeric; make pscam.clusterdata a numeric matrix
-pscam.tree <- hclustvar(X.quanti = as.matrix(pscam.clusterdata)*1)
+dsd.tree <- hclustvar(X.quali = dsd.clusterdata)
+pscam.tree <- hclustvar(X.quali = pscam.clusterdata)
 
+## Using ClustOfVar
+# dsd.clusters <- cutreevar(dsd.tree, k = 4, matsim = TRUE)
+# pscam.clusters <- cutreevar(pscam.tree, k = 4, matsim = TRUE)
+
+## Using ClustVarLV
+## Run hierarchical clustering on both data sets
+dsd.resclv <- CLV(stand_quali(dsd.clusterdata),
+                  method = "directional",
+                  sX = FALSE)
+pscam.resclv <- CLV(stand_quali(pscam.clusterdata),
+                    method = "directional",
+                    sX = FALSE)
+
+## Extract proportion of each dataset accounted for by group latent variables for 2-4 clusters;
+## we'll use the number of clusters with the highest proportion
+n.k <- 2:4
+dsd.proptot <- map_dbl(n.k, ~summary(dsd.resclv, K = .)$prop_tot)
+pscam.proptot <- map_dbl(n.k, ~summary(pscam.resclv, K = .)$prop_tot)
+
+dsd.nk <- n.k[dsd.proptot == max(dsd.proptot)]
+pscam.nk <- n.k[pscam.proptot == max(pscam.proptot)]
+
+## Fortunately, both datasets resulted in the same number of clusters
+
+dsd.clustersummary <- summary(dsd.resclv, K = dsd.nk)
+pscam.clustersummary <- summary(pscam.resclv, K = dsd.nk)
+
+## Which cluster is each symptom in?
+## Function to extract symptom names, cluster numbers from summary.clv objects
+clv.df <- function(x){
+  nk <- length(x$groups)
+  tmp <- map_df(1:nk, ~data.frame(symptom = rownames(x$groups[[.]]), cluster = .)) %>%
+    mutate(symptom = gsub('\\..*$', '', symptom)) %>%
+    unique()
+  tmp
+}
+
+dsd.clusters <- clv.df(dsd.clustersummary)
+pscam.clusters <- clv.df(pscam.clustersummary)
+clusters.data <- merge(dsd.clusters, pscam.clusters, by = 'symptom')
+names(clusters.data) <- c('Symptom', 'Geriatric', 'Pediatric')
+
+symptom.k <- cohen.kappa(clusters.data[,c('Geriatric', 'Pediatric')])
+
+@
+
+\subsection{Dendrograms of Symptoms by Population}
+Symptoms on the same ``tree" are observed together more often.
+
+<<cluster_trees, results = 'asis', fig.height = 3.75, fig.width = 8>>=
+par(cex = 0.75)
 plot(dsd.tree, sub = 'Geriatric Patients')
 plot(pscam.tree, sub = 'Pediatric Patients')
 
-dsd.clusters <- cutreevar(dsd.tree, k = 4, matsim = TRUE)
-pscam.clusters <- cutreevar(pscam.tree, k = 4, matsim = TRUE)
+@
+
+\subsection{Clusters by Population and Between-Group Agreement}
+For each population, we looked at the proportion of variability explained by clustering the variables when forcing two, three, and four clusters. In both populations, \Sexpr{dsd.nk} clusters
+produced the highest proportion of variance explained: \Sexpr{round(max(dsd.proptot)*100)}\% among geriatric patients, and \Sexpr{round(max(pscam.proptot)*100)}\% among pediatric patients.
+
+If the values in the two columns below are the same, this indicates that the symptom fell into the
+same cluster in both populations.
+
+<<cluster_kappa, results = 'asis'>>=
+# cluster.matrix <- cbind(dsd.clusters$cluster, pscam.clusters$cluster)
+# rownames(cluster.matrix) <- common.symptoms
+# colnames(cluster.matrix) <- c('Geriatric', 'Pediatric')
+# cluster.matrix
+
+# cohen.kappa(cbind(dsd.clusters$cluster, pscam.clusters$cluster))
+
+latex(clusters.data, file = '',
+      rowname = NULL,
+      title = '',
+      where = '!h',
+      caption = 'Symptom Clusters by Population')
 
 @
 
-<<cluster_kappa, results = 'markup'>>=
-cluster.matrix <- cbind(dsd.clusters$cluster, pscam.clusters$cluster)
-rownames(cluster.matrix) <- common.symptoms
-colnames(cluster.matrix) <- c('Geriatric', 'Pediatric')
-cluster.matrix
-
-cohen.kappa(cbind(dsd.clusters$cluster, pscam.clusters$cluster))
-
-@
-
+Unfortunately, we saw very low agreement between the two populations in terms of where symptoms
+clustered: only consciousness was in the same cluster in both populations, and when we performed a
+Cohen's kappa on the above, the result is only \Sexpr{round(symptom.k$kappa, 2)} (95\% CI, [\Sexpr{round(symptom.k$confid[1, 'lower'], 2)}, \Sexpr{round(symptom.k$confid[1, 'upper'], 2)}]).
 
 \end{document}

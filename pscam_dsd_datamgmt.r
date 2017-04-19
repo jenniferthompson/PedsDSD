@@ -6,9 +6,9 @@
 ####################################################################################################
 
 library(RCurl)
-library(Hmisc)
-library(tidyr)
-library(dplyr)
+# library(Hmisc)
+# library(tidyr)
+# library(dplyr)
 
 curl_handle = getCurlHandle()
 curlSetOpt(ssl.verifypeer = FALSE, connecttimeout = 0, timeout = 600, curl = curl_handle)

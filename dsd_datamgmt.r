@@ -5,9 +5,9 @@
 ##  baseline data on Italian geriatric patients assessed for delirium
 ####################################################################################################
 
-library(Hmisc)
-library(tidyr)
-library(dplyr)
+# library(Hmisc)
+# library(tidyr)
+# library(dplyr)
 
 dsd.data <- read.csv('dsd_13oct2014.csv')
 names(dsd.data) <- gsub('_', '.', tolower(names(dsd.data)), fixed = TRUE)
