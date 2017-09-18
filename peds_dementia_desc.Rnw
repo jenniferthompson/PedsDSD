@@ -580,7 +580,7 @@ latex(symptom.table.hypo, file = '',
 
 \begin{landscape}
 <<symptomshypofig, results='asis', fig.cap='Dot Chart, Delirium Symptoms among Hypoactively Delirious Assessments by Population', fig.height=8, fig.width=11>>=
-radar.hypo$dot.radar
+radar.hypo$dot.plot
 @
 \end{landscape}
 
@@ -601,7 +601,7 @@ latex(symptom.table.hyper, file = '',
 
 \begin{landscape}
 <<symptomshyperfig, results='asis', fig.cap='Dot Chart, Delirium Symptoms among Hyperactively Delirious Assessments by Population', fig.height=8, fig.width=11>>=
-radar.hyper$dot.radar
+radar.hyper$dot.plot
 @
 \end{landscape}
 
