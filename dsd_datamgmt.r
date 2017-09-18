@@ -12,6 +12,10 @@
 dsd.data <- read.csv('dsd_13oct2014.csv')
 names(dsd.data) <- gsub('_', '.', tolower(names(dsd.data)), fixed = TRUE)
 
+## -- September 2017: Remove geriatric patients with CDR of 0/1; these ---------
+## -- patients don't have the level of dementia we're interested in ------------
+dsd.data <- subset(dsd.data, cdr > 1)
+
 ## Add ".g" to rass columns to make consistent with dom columns for reshaping later ##
 names(dsd.data) <- gsub('rass\\.', 'rass\\.g\\.', names(dsd.data))
 
