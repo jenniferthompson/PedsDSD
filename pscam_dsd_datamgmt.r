@@ -474,14 +474,17 @@ pscam.data$ref.delirium <- with(pscam.data, {
          (!is.na(ref.delirium.present) & ref.delirium.present.factor == 'Yes') |
            (!is.na(ref.delirium.present2) & ref.delirium.present2.factor == 'Yes')) })
 
+## Changed September 2017 to use reference rater LOC, not reference rater subtype
+## This matches DSD approach
 pscam.data$del.type <- with(pscam.data, {
-  factor(ifelse(is.na(ref.delirium) | !ref.delirium |
-                 (is.na(ref.delirium.present.type) & is.na(ref.deliriumtype2)), NA,
-         ifelse((!is.na(ref.delirium.present.type) & ref.delirium.present.type.factor == 'HYPOactive') |
-                  (!is.na(ref.deliriumtype2) & ref.deliriumtype2.factor == 'Hypoactive'), 1,
-         ifelse((!is.na(ref.delirium.present.type) & ref.delirium.present.type.factor == 'HYPERactive') |
-                  (!is.na(ref.deliriumtype2) & ref.deliriumtype2.factor == 'Hyperactive'), 2, 3))),
-         levels = 1:3, labels = c('Hypoactive', 'Hyperactive', 'Mixed')) })
+  factor(ifelse(is.na(ref.delirium) | !ref.delirium | is.na(ref.conscious), NA,
+         ifelse(ref.conscious.factor %in% c("Combative", "Agitated", "Restless"), 2,
+         ifelse(ref.conscious.factor %in% c("Alert and Calm"), 3,
+         ifelse(ref.conscious.factor %in% c("Drowsy", "Lethargy", "Obtundation",
+                                            "Stupor", "Coma"), 1, NA)))),
+         levels = 1:3,
+         labels = c("Hypoactive", "Hyperactive", "RASS = 0"))
+})
 
 ## Get study day ##
 pscam.data$day <- as.numeric(gsub('^Assessment', '', as.character(pscam.data$redcap.event.name.factor)))
@@ -503,7 +506,7 @@ num.del.asmts <- pscam.long %>%
   summarise(del.asmts = sum(ref.delirium),
             del.asmts.hypo = sum(del.type == 'Hypoactive', na.rm = TRUE),
             del.asmts.hyper = sum(del.type == 'Hyperactive', na.rm = TRUE),
-            del.asmts.mixed = sum(del.type == 'Mixed', na.rm = TRUE))
+            del.asmts.rass0 = sum(del.type == 'RASS = 0', na.rm = TRUE))
 
 pscam.oneobs <- merge(pscam.oneobs, num.del.asmts, by = 'id', all = TRUE)
 
@@ -519,7 +522,8 @@ pscam.oneobs <- pscam.oneobs %>%
                                        'Moderate risk (11-20)',
                                        'High risk (<20)')))
 
-rm(list = Cs(mult.ids, num.del.asmts, pscam.data, curl_handle, prism.vars,
+rm(list = Cs(mult.ids, num.del.asmts, # pscam.data,
+             curl_handle, prism.vars,
              ref.rater.no, vars.anxiety, vars.apathy, vars.attention, vars.consciousness,
              vars.fluctuation, vars.hallucinations, vars.incoherence, vars.inconsolability,
              vars.lethargy, vars.orientation, vars.restless, vars.shift.attn, vars.sustained.attn,
