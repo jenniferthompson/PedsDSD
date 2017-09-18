@@ -32,6 +32,8 @@ options(replace.assign = TRUE, width = 90)
 
 library(rms)
 library(tidyverse)
+library(viridis)
+library(ggbeeswarm)
 
 source('dsd_datamgmt.r')
 source('pscam_dsd_datamgmt.r')
@@ -287,8 +289,9 @@ latex(gerdesc.table, file = '',
 @
 
 <<createmaintable>>=
-del.symptoms <- Cs(attention, orientation, consciousness, apathy, hypokinesia, incoherence,
-                   fluctuation, restlessness, delusions, hallucination, anxiety, inconsolability)
+del.symptoms <- Cs(attention, orientation, consciousness, apathy, hypokinesia,
+                   incoherence, fluctuation, restlessness, delusions,
+                   hallucination, anxiety, inconsolability)
 
 calc.pct <- function(varname, dataset){
   ## Get number of all delirium assessments, number of assessments with feature assessed
@@ -364,31 +367,29 @@ create.radar <- function(symptom.data.list, ylabel){
 #                                paste0('\n', as.character(radar.data$symptom)),
 #                                as.character(radar.data$symptom))
   radar.data$xval <- 1
+  radar.data$usex <- rep(1:length(del.symptoms), each = 3)
   
   dot.plot <-
-  ggplot(aes(x = symptom.f, y = pct, colour = pop), data = radar.data) +
-    geom_vline(xintercept = 1:length(del.symptoms), colour = 'grey70', alpha = 0.7, size = 15) +
-    geom_vline(xintercept = c(#(1:length(del.symptoms) - 0.15),
-                              1:length(del.symptoms)),
-                              #(1:length(del.symptoms) + 0.15)),
-               colour = 'white', size = 0.25) +
+  ggplot(aes(x = usex, y = pct, colour = pop), data = radar.data) +
+    geom_vline(xintercept = 1:length(del.symptoms), colour = 'grey75', alpha = 0.7, size = 20) +
     geom_hline(yintercept = seq(25, 100, 25), colour = 'white', size = 0.5) +
-    geom_point(size = 3, alpha = 0.7) + #, position = position_dodge(width = 0.5)) +
-#     coord_flip() +
-    scale_colour_discrete(name = '') +
-#     scale_size(name = '', range = c(2.5, 4), guide = FALSE) +
-    scale_x_discrete(name = '') +
-    scale_y_continuous(name = ylabel) +
-    theme(#panel.grid.major.x = element_line(size = 15, colour = 'grey80', alpha = 0.5),
-          #panel.grid.major.y = element_line(colour = 'white'),
-          #panel.grid.minor.y = element_line(colour = 'white'),
-          panel.background = element_rect(fill = 'white'),
-          axis.title.x = element_text(vjust = 0, size = 10),
-          axis.text.x = element_text(angle = 60, vjust = 1, hjust = 1),
-          axis.text.y = element_text(hjust = 1.75),
-          axis.ticks.x = element_blank(),
-          axis.ticks.y = element_blank(),
-          legend.position = 'bottom')
+    geom_vline(xintercept = c(1:length(del.symptoms)), colour = 'grey90', size = 0.1) +
+    geom_beeswarm(size = 3, alpha = 0.7, priority = 'ascending') +
+    scale_color_viridis(name = '', discrete = TRUE) +
+    scale_x_continuous(name = '',
+                       limits = c(1, length(del.symptoms) + 0.25),
+                       breaks = 1:length(unique(radar.data$symptom.f)),
+                       labels = unique(radar.data$symptom.f)) +
+    scale_y_continuous(name = ylabel,
+                       breaks = seq(0, 100, 25), labels = paste0(seq(0, 100, 25), '%')) +
+    theme_minimal() +
+    theme(axis.title.x = element_blank(),
+          axis.text.x = element_text(angle = 30, vjust = 1, hjust = 1),
+          axis.text.y = element_text(hjust = 1),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          legend.position = 'bottom',
+          legend.key = element_rect(fill = 'grey80', colour = NA))
 
   radar.plot <- ggplot(aes(x = symptom.f, y = pct, group = pop, colour = pop), data = radar.data) +
     geom_line() +
@@ -428,7 +429,7 @@ create.radar <- function(symptom.data.list, ylabel){
 }
 
 radar.all <- create.radar(symptom.data.all,
-                          ylabel = 'Percent of Delirious Assessments where Symptom Assessed and Present')
+                          ylabel = 'Delirious Assessments where\nSymptom Assessed and Present')
 @
 
 \clearpage
@@ -452,10 +453,11 @@ latex(symptom.table, file = '',
 @
 
 \begin{landscape}
-<<symptomsallfig, fig.cap='Dot Chart, Delirium Symptoms among All Assessments by Population', fig.height=8, fig.width=11>>=
-# radar.all$dot.plot
+<<symptomsallfig, fig.cap='Dot Chart, Delirium Symptoms among All Assessments by Population', fig.height=6, fig.width=10>>=
+radar.all$dot.plot
 # radar.all$radar.plot
-radar.all$dot.radar
+# radar.all$dot.radar
+
 @
 \end{landscape}
 
@@ -753,6 +755,191 @@ latex(clusters.data, file = '',
 Unfortunately, we saw very low agreement between the two populations in terms of where symptoms
 clustered: only consciousness was in the same cluster in both populations, and when we performed a
 Cohen's kappa on the above, the result is only \Sexpr{round(symptom.k$kappa, 2)} (95\% CI, [\Sexpr{round(symptom.k$confid[1, 'lower'], 2)}, \Sexpr{round(symptom.k$confid[1, 'upper'], 2)}]).
+
+%% -- Heatmap was deemed less helpful --------------------------------------------------------------
+% <<vis_heatmap>>=
+% ## -- Create dataset for heatmaps ------------------------------------------------------------------
+% ## For each symptom,
+% ## - how many patients had it
+% ## - how many patients had each other symptom
+% ## - what % of patients with that symptom had each other symptom
+% ## - what cluster is it in for each population, if applicable
+% ## - population
+% 
+% days_with_both <- function(symp1, symp2, df){
+%   data.frame(symp1 = symp1,
+%              symp2 = symp2,
+%              n_days = nrow(df),
+%              n_symp1 = sum(as.logical(df[,symp1]), na.rm = TRUE),
+%              n_symp2 = sum(as.logical(df[,symp2]), na.rm = TRUE),
+%              n_both = sum(as.logical(df[as.logical(df[, symp1]), symp2]), na.rm = TRUE))
+% }
+% 
+% dsd.heatdata <- map2_df(sort(rep(del.symptoms, length(del.symptoms))),
+%                         rep(del.symptoms, length(del.symptoms)),
+%                         days_with_both,
+%                         df = dsd.long) %>%
+%   left_join(dsd.clusters, by = c('symp1' = 'symptom')) %>%
+%   rename(cluster_symp1 = cluster) %>%
+%   left_join(dsd.clusters, by = c('symp2' = 'symptom')) %>%
+%   rename(cluster_symp2 = cluster) %>%
+%   mutate(pop = 'Geriatric')
+% 
+% pscam.heatdata <- map2_df(sort(rep(del.symptoms, length(del.symptoms))),
+%                           rep(del.symptoms, length(del.symptoms)),
+%                           days_with_both,
+%                           df = pscam.long) %>%
+%   left_join(pscam.clusters, by = c('symp1' = 'symptom')) %>%
+%   rename(cluster_symp1 = cluster) %>%
+%   left_join(pscam.clusters, by = c('symp2' = 'symptom')) %>%
+%   rename(cluster_symp2 = cluster) %>%
+%   mutate(pop = 'Pediatric')
+% 
+% data.heatmap <- bind_rows(dsd.heatdata, pscam.heatdata) %>%
+%   mutate(n_symp1 = ifelse((pop == 'Geriatric' & symp1 == 'inconsolability') |
+%                             (pop == 'Pediatric' & symp1 == 'delusions'), NA,
+%                           n_symp1),
+%          n_symp2 = ifelse((pop == 'Geriatric' & symp2 == 'inconsolability') |
+%                             (pop == 'Pediatric' & symp2 == 'delusions'), NA,
+%                           n_symp2),
+%          n_both = ifelse((pop == 'Geriatric' &
+%                             (symp1 == 'inconsolability' | symp2 == 'inconsolability')) |
+%                          (pop == 'Pediatric' & (symp1 == 'delusions' | symp2 == 'delusions')), NA,
+%                          n_both),
+%          pct_symp1_all = ifelse(!is.na(n_symp2), n_symp1 / n_days, NA),
+%          pct_symp2_all = ifelse(!is.na(n_symp1), n_symp2 / n_days, NA),
+%          pct_both_all = n_both / n_days,
+%          pct_both_symp1 = ifelse((pop == 'Geriatric' &
+%                                     (symp1 == 'inconsolability' | symp2 == 'inconsolability')) |
+%                                  (pop == 'Pediatric' &
+%                                     (symp1 %in% c('delusions') | symp2 %in% c('delusions'))), NA,
+%                                  n_both / n_symp1),
+%          cluster_both = factor(ifelse(is.na(pct_both_symp1), NA,
+%                                ifelse(!is.na(cluster_symp1) & !is.na(cluster_symp2) &
+%                                        cluster_symp1 == cluster_symp2, cluster_symp1,
+%                                ifelse(!is.na(cluster_symp1), 0, -1))),
+%                                levels = -1:4,
+%                                labels = c('Not included in clustering',
+%                                           'Symptoms in different clusters',
+%                                           as.character(1:4)))) %>%
+%   rename(Cluster = cluster_both,
+%          PctOfAllDayswSymptom1 = pct_both_symp1,
+%          Symptom1 = symp1,
+%          Symptom2 = symp2,
+%          PctofDayswSymptom2 = pct_both_symp1)
+% 
+% p <- ggplot(data = data.heatmap, aes(x = Symptom2, y = Symptom1)) +
+%   facet_wrap(~ pop) +
+%   geom_tile(aes(fill = pct_symp1_all, alpha = PctofDayswSymptom2)) +
+%   # ## Colors by clustering
+%   # scale_fill_manual(values = c('black', 'darkorange',
+%   #                              viridis(option = 'viridis', n = 4))) +
+%   ## Colors
+%   scale_alpha(name = 'Proportion of Row\nSymptom Days\nwith Column Symptom') +
+%   scale_fill_viridis(name = 'Proportion of All Days\nwith Row Symptom',
+%                      option = 'viridis', direction = 1) +
+%   scale_x_discrete(name = NULL) +
+%   scale_y_discrete(name = NULL) +
+%   theme_minimal() +
+%   theme(panel.grid = element_blank(),
+%         # plot.background = element_rect(fill = 'grey20'),
+%         #panel.background = element_rect(fill = 'grey90'),
+%         strip.text = element_text(hjust = 0, face = 'bold', size = 15),
+%         axis.text.x = element_text(angle = 45, hjust = 1),
+%         axis.ticks = element_blank())
+% 
+% p %>%
+%   ggplotly(tooltip = c('y', 'x', 'fill', 'alpha'))
+% 
+% 
+% @
+
+
+<<vis_clusters>>=
+library(ggraph)
+library(igraph)
+
+## -- For each unique pair of symptoms, what N/proportion of patient-days had both? ----------------
+## Data frame of all unique symptom pairs, except those not assessed in both populations
+network.symptoms <- del.symptoms[!(del.symptoms %in% c('inconsolability', 'delusions'))]
+symptom1 <- rep(1:length(del.symptoms), each = length(del.symptoms))
+symptom2 <- rep(1:length(del.symptoms), length(del.symptoms))
+
+symptom.pairs <- as.data.frame(cbind(symptom1, symptom2)) %>%
+  filter(symptom2 > symptom1) %>%
+  mutate(symptom1 = del.symptoms[symptom1],
+         symptom2 = del.symptoms[symptom2])
+
+## Function to calculate N, % of all obs in a given data.frame with both symptom1 and symptom2
+calc_symptom_npct <- function(s1, s2, df, pop){
+  df %>%
+    mutate_(has.both = lazyeval::interp(~ as.numeric(x) == 1 &
+                                          as.numeric(y) == 1,
+                                        x = as.name(s1), y = as.name(s2))) %>%
+    summarise(n.both = sum(has.both, na.rm = TRUE),
+              pct.both = round(mean(has.both, na.rm = TRUE)*100)) %>%
+    mutate(symptom1 = s1, symptom2 = s2, population = pop)
+}
+
+## Calculate N, % for each population (geriatric, infants, preschoolers)
+dsd.args <- list(s1 = symptom.pairs$symptom1, s2 = symptom.pairs$symptom2,
+                 df = list(dsd.long),
+                 pop = 'Geriatric')
+
+infant.args <- list(s1 = symptom.pairs$symptom1, s2 = symptom.pairs$symptom2,
+                    df = list(subset(pscam.long, age.grp == "Infant (6-23m)")),
+                    pop = "Infant (6-23m)")
+
+preschool.args <- list(s1 = symptom.pairs$symptom1, s2 = symptom.pairs$symptom2,
+                       df = list(subset(pscam.long, age.grp == "Preschool (24-48m)")),
+                       pop = "Preschool (24-48m)")
+
+data.ggraph <- map_df(list(dsd.args, infant.args, preschool.args),
+                      ~ pmap_df(., .f = calc_symptom_npct)) %>%
+  filter(symptom1 %in% network.symptoms & symptom2 %in% network.symptoms)
+
+## I want the edges to be pretty fans. I think this means I need one record per observation. Sad.
+data.ggraph2 <- map_df(1:nrow(data.ggraph),
+                       ~ bind_rows(rep(list(data.ggraph[.,]), data.ggraph[.,'pct.both'])))
+
+data.ggraph2 <- data.ggraph2[,c('symptom1', 'symptom2', 'pct.both', 'n.both', 'population')]
+names(data.ggraph2) <- c('from', 'to', 'weight', 'n.both', 'population')
+
+## Create data.frame of vertex info
+## Make DSD data logical, not numeric
+dsd.long.lgl <- map(network.symptoms, ~ as.tibble(as.logical(dsd.long[, .]))) %>%
+  bind_cols()
+names(dsd.long.lgl) <- network.symptoms
+
+all.recs <- bind_rows(dsd.long.lgl, pscam.long[,network.symptoms]) %>%
+  gather(key = symptom, value = had.symptom) %>%
+  group_by(symptom) %>%
+  summarise(had.symptom = sum(had.symptom, na.rm = TRUE)) %>%
+  ungroup() %>%
+  arrange(desc(had.symptom)) %>%
+  mutate(name = capitalize(symptom))
+
+gr.data <- graph_from_data_frame(d = data.ggraph2, directed = FALSE, vertices = all.recs)
+
+commonsymp.network <- ggraph(gr.data, layout = 'circle') +
+  facet_edges(~ population) +
+  geom_edge_fan(aes(colour = from), alpha = 0.1) +
+  geom_node_point(aes(size = had.symptom), colour = 'gray50', alpha = 0.5) +
+  geom_node_label(aes(label = name),
+                  nudge_y = -0.15, size = 3, label.padding = unit(0.1, 'lines'), label.size = 0, alpha = 0.75) +
+  scale_edge_color_viridis(end = 0.85) +
+  scale_x_continuous(limits = c(-1.2, 1.2)) +
+  theme_void() +
+  theme(legend.position = 'none',
+        strip.text = element_text(hjust = 0.2, face = 'bold', size = 12)) +
+  coord_fixed()
+
+pdf(file = 'common_symptoms_network.pdf', width = 10, height = 4)
+commonsymp.network
+dev.off()
+
+@
+
 
 \clearpage
 \section{Software Details}
