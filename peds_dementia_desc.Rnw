@@ -87,7 +87,7 @@ label(pscam.oneobs$dc.status) <- 'Status at discharge'
 label(pscam.oneobs$del.asmts) <- 'Number of assessments with delirium'
 label(pscam.oneobs$del.asmts.hypo) <- 'Number of hypoactive delirium assessments'
 label(pscam.oneobs$del.asmts.hyper) <- 'Number of hyperactive delirium assessments'
-label(pscam.oneobs$del.asmts.mixed) <- 'Number of mixed type delirium assessments'
+label(pscam.oneobs$del.asmts.rass0) <- 'Number of delirium assessments where RASS = 0'
 
 label(pscam.long$id) <- 'Patient ID'
 label(pscam.long$day) <- 'Study day'
@@ -235,7 +235,7 @@ describes baseline and in-hospital characteristics for these patients.
 <<pedsdesc>>=
 pedsdesc.left <- paste(c('age', paste0('admit.dx.', 0:20, collapse = ' + '), 'prism.score',
                          'prism.cat', 'del.asmts', 'del.asmts.hypo', 'del.asmts.hyper',
-                         'del.asmts.mixed', 'los', 'dc.status'),
+                         'del.asmts.rass0', 'los', 'dc.status'),
                        collapse = ' + ')
 
 pedsdesc.table <- summaryM(as.formula(paste(pedsdesc.left, ' ~ age.grp')),
@@ -258,8 +258,9 @@ latex(pedsdesc.table, file = '',
 
 \clearpage
 \subsection{Geriatric Patients}
-We included geriatric patients with dementia and at least one delirium assessment. Table
-\ref{table:gerdesc} describes baseline and in-hospital characteristics for these patients.
+We included geriatric patients with dementia (CDR \textgreater 1) and at least
+one delirium assessment. Table \ref{table:gerdesc} describes baseline and
+in-hospital characteristics for these patients.
 
 <<gerdesc>>=
 # gerdesc.left <- paste(c('age', paste0('admit.dx.', 0:20, collapse = ' + '), 'prism.score',
@@ -279,7 +280,8 @@ latex(gerdesc.table, file = '',
       caption = 'Baseline and In-Hospital Characteristics of DSD Patients',
       where = '!h',
 #       exclude1 = FALSE,
-      long = TRUE,
+      long = FALSE,
+      size = "small",
       prmsd = TRUE,
       digits = 2,
       what = '%',
