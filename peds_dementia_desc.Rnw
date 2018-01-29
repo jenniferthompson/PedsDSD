@@ -344,7 +344,7 @@ colnames(symptom.table) <- c('DSD', 'Infants (6-23 months)', 'Preschoolers (24-4
 rownames(symptom.table) <- capitalize(del.symptoms)
 
 ## Data for radar plot ##
-create.radar <- function(symptom.data.list, ylabel){
+create.radar <- function(symptom.data.list, ylabel, inc.ps = TRUE){
   radar.data <- 
     do.call(rbind,
             lapply(1:length(symptom.data.list),
@@ -357,6 +357,14 @@ create.radar <- function(symptom.data.list, ylabel){
                                                  pct = symptom.data.list[[data]][[sympnum]]$pct.abnormal.nonmiss)
                                       }))
                      }))
+  
+  ## If we don't want preschoolers, remove them from radar.data (sorry, kids)
+  if(!inc.ps){
+    radar.data <- subset(radar.data, !(pop == "Preschoolers (24-48m)"))
+    delsymp.times <- 2
+  } else{
+    delsymp.times <- 3
+  }
 
   ## Sort by percent of DSD patients
   dsd.data <- subset(radar.data, pop == 'DSD')
@@ -369,7 +377,7 @@ create.radar <- function(symptom.data.list, ylabel){
 #                                paste0('\n', as.character(radar.data$symptom)),
 #                                as.character(radar.data$symptom))
   radar.data$xval <- 1
-  radar.data$usex <- rep(1:length(del.symptoms), each = 3)
+  radar.data$usex <- rep(1:length(del.symptoms), each = delsymp.times)
   
   dot.plot <-
   ggplot(aes(x = usex, y = pct, colour = pop), data = radar.data) +
@@ -465,11 +473,7 @@ radar.all$dot.plot
 
 % \clearpage
 \section{Delirium Symptoms by Delirium Subtype}
-We examined the prevalence of each delirium symptom separately for hypoactive and hyperactive
-delirium. These delirium subtypes were indicated by the reference raters in the pediatric assessments,
-and determined via the RASS in the DSD assessments (RASS $<$ 0 = hypoactive; RASS $>$ 0 = hyperactive).
-Tables \ref{table:pedssubtypes} and \ref{table:gersubtypes} describe the prevalence of each subtype
-in both populations.
+We examined the prevalence of each delirium symptom separately for hypoactive and hyperactive delirium. These delirium subtypes were indicated by the reference raters in the pediatric assessments, and determined via the RASS in the DSD assessments (RASS $<$ 0 = hypoactive; RASS $>$ 0 = hyperactive). Tables \ref{table:pedssubtypes} and \ref{table:gersubtypes} describe the prevalence of each subtype in both populations.
 
 <<descsubtypes>>=
 ped.subtypes <- summaryM(del.type ~ age.grp, overall = TRUE, data = pscam.long)
@@ -500,8 +504,7 @@ latex(ger.subtypes, file = '',
 @
 
 \clearpage
-Tables \ref{table:symptomshypo} and \ref{table:symptomshyper} present the prevalence of delirium
-symptoms among hypoactive and hyperactive delirium assessments, respectively.
+Tables \ref{table:symptomshypo} and \ref{table:symptomshyper} present the prevalence of delirium symptoms among hypoactive and hyperactive delirium assessments, respectively.
 
 <<subtypesymptoms>>=
 ## Create subsets of data sets to use in lapply() ##
@@ -560,7 +563,8 @@ rownames(symptom.table.hyper) <- capitalize(del.symptoms)
 
 radar.hyper <-
   create.radar(symptom.data.hyper,
-               ylabel = 'Percent of Hyperactively Delirious Assessments where Symptom Assessed and Present')
+               ylabel = 'Percent of Hyperactively Delirious Assessments where Symptom Assessed and Present',
+               inc.ps = FALSE)
 
 @
 
