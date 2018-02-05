@@ -53,6 +53,11 @@ pscam.long.infants <- pscam.long %>%
 pscam.long.pre <- pscam.long %>%
   filter(age.grp == 'Preschool (24-48m)')
 
+## -- Set color palette for DSD, infants, preschoolers -------------------------
+## One chart will exclude preschoolers, so need a way to have consistency vs
+## relying on defaults
+age_palette <- viridisLite::viridis(3)
+
 @
 
 <<varlabels>>=
@@ -385,7 +390,7 @@ create.radar <- function(symptom.data.list, ylabel, inc.ps = TRUE){
     geom_hline(yintercept = seq(25, 100, 25), colour = 'white', size = 0.5) +
     geom_vline(xintercept = c(1:length(del.symptoms)), colour = 'grey90', size = 0.1) +
     geom_beeswarm(size = 3, alpha = 0.7, priority = 'ascending') +
-    scale_color_viridis(name = '', discrete = TRUE) +
+    scale_color_manual(name = "", values = age_palette) +
     scale_x_continuous(name = '',
                        limits = c(1, length(del.symptoms) + 0.25),
                        breaks = 1:length(unique(radar.data$symptom.f)),
